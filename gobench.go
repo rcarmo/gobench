@@ -30,6 +30,7 @@ var (
 	writeTimeout     int
 	readTimeout      int
 	authHeader       string
+	verbose          bool
 )
 
 type Configuration struct {
@@ -89,6 +90,7 @@ func init() {
 	flag.IntVar(&writeTimeout, "tw", 5000, "Write timeout (in milliseconds)")
 	flag.IntVar(&readTimeout, "tr", 5000, "Read timeout (in milliseconds)")
 	flag.StringVar(&authHeader, "auth", "", "Authorization header")
+	flag.BoolVar(&verbose, "v", true, "Show debug messages")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -279,7 +281,9 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			fasthttp.ReleaseResponse(resp)
 
 			if err != nil {
-				fmt.Println(err)
+				if(verbose) {
+					fmt.Printf("Network Error :[%s]\n", err)
+				}
 				result.networkFailed++
 				continue
 			}
@@ -287,6 +291,9 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			if statusCode == fasthttp.StatusOK {
 				result.success++
 			} else {
+				if(verbose) {
+					fmt.Printf("Non-2xx Status Code returned: [%d]\n", statusCode)
+				}
 				result.badFailed++
 			}
 		}
