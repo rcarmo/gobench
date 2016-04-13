@@ -90,7 +90,7 @@ func init() {
 	flag.IntVar(&writeTimeout, "tw", 5000, "Write timeout (in milliseconds)")
 	flag.IntVar(&readTimeout, "tr", 5000, "Read timeout (in milliseconds)")
 	flag.StringVar(&authHeader, "auth", "", "Authorization header")
-	flag.BoolVar(&verbose, "v", true, "Show debug messages")
+	flag.BoolVar(&verbose, "v", false, "Show debug messages")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -277,7 +277,9 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			requestTimer := time.Now().UTC()
 			err := configuration.myClient.Do(req, resp)
 			statusCode := resp.StatusCode()
-			fmt.Printf("Got status code [%d] - Request took [%s]", statusCode, time.Since(requestTimer) )
+			if(verbose) {
+				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer) )
+			}
 			result.requests++
 			fasthttp.ReleaseRequest(req)
 			fasthttp.ReleaseResponse(resp)
