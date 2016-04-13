@@ -274,8 +274,10 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			req.SetBody(configuration.postData)
 
 			resp := fasthttp.AcquireResponse()
+			requestTimer := time.Now().UTC()
 			err := configuration.myClient.Do(req, resp)
 			statusCode := resp.StatusCode()
+			fmt.Printf("Got status code [%d] - Request took [%s]", statusCode, time.Since(requestTimer) )
 			result.requests++
 			fasthttp.ReleaseRequest(req)
 			fasthttp.ReleaseResponse(resp)
