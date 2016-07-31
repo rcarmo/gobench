@@ -30,6 +30,7 @@ var (
 	writeTimeout     int
 	readTimeout      int
 	authHeader       string
+	contentType      string
 )
 
 type Configuration struct {
@@ -40,6 +41,7 @@ type Configuration struct {
 	period     int64
 	keepAlive  bool
 	authHeader string
+	contentType      string
 
 	myClient fasthttp.Client
 }
@@ -89,6 +91,7 @@ func init() {
 	flag.IntVar(&writeTimeout, "tw", 5000, "Write timeout (in milliseconds)")
 	flag.IntVar(&readTimeout, "tr", 5000, "Read timeout (in milliseconds)")
 	flag.StringVar(&authHeader, "auth", "", "Authorization header")
+	flag.StringVar(&contentType, "type", "", "Content-Type header")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -175,7 +178,8 @@ func NewConfiguration() *Configuration {
 		postData:   nil,
 		keepAlive:  keepAlive,
 		requests:   int64((1 << 63) - 1),
-		authHeader: authHeader}
+		authHeader: authHeader,
+		contentType: contentType}
 
 	if period != -1 {
 		configuration.period = period
@@ -267,6 +271,13 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 
 			if len(configuration.authHeader) > 0 {
 				req.Header.Set("Authorization", configuration.authHeader)
+			}
+
+			if len(configuration.contentType) > 0 {
+				req.Header.Set("Content-Type", contentType)
+
+			} else if len(configuration.postData) > 0 {
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			}
 
 			req.SetBody(configuration.postData)
