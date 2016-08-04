@@ -122,6 +122,7 @@ func printResults(results map[int]*Result, startTime time.Time) {
 	fmt.Printf("Read throughput:                %10d bytes/sec\n", readThroughput/elapsed)
 	fmt.Printf("Write throughput:               %10d bytes/sec\n", writeThroughput/elapsed)
 	fmt.Printf("Test time:                      %10d sec\n", elapsed)
+	fmt.Printf("Average request latency:              %4.2f msec\n", float64(elapsed)/float64(success)*1000)
 }
 
 func readLines(path string) (lines []string, err error) {
