@@ -6,8 +6,11 @@ go:
 services:
 - docker
 
+env:
+- CGO_ENABLED=0
+- GOOS=linux
+
 script:
-- CGO_ENABLED=0 GOOS=linux go get github.com/vitkhab/gobench
 - cp $GOPATH/bin/gobench .
 - docker build -t vitkhab/gobench:latest .
 
