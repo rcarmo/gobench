@@ -7,8 +7,7 @@ services:
 - docker
 
 env:
-- CGO_ENABLED=0
-- GOOS=linux
+- CGO_ENABLED=0 GOOS=linux
 
 script:
 - cp $GOPATH/bin/gobench .
