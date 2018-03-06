@@ -66,7 +66,7 @@ Usage
 2. download gobench
     
     ```
-    GOPATH=/tmp/ go get github.com/valyala/fasthttp
+    GOPATH=/tmp/ go get github.com/Dark-Vex/fasthttp
     GOPATH=/tmp/ go get github.com/Dark-Vex/gobench
     ```
 
