@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"crypto/tls"
-	"github.com/valyala/fasthttp"
+	"github.com/Dark-Vex/fasthttp"
 )
 
 var (
