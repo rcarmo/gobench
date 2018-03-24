@@ -16,10 +16,12 @@ import (
 	"sync/atomic"
 	"time"
 	"math/rand"
+	"crypto/tls"
 
 	"github.com/valyala/fasthttp"
 )
 
+// Global variables
 var (
 	requests         int64
 	period           int64
@@ -34,8 +36,10 @@ var (
 	userAgent        string
 	acceptEnc        string
 	randomize        bool
+	insecure	 bool
 )
 
+// Benchmark Client Configuration
 type Configuration struct {
 	urls       []string
 	method     string
@@ -98,6 +102,7 @@ func init() {
 	flag.StringVar(&userAgent, "agent", "", "User-Agent header")
 	flag.StringVar(&acceptEnc, "accept", "", "Accept-Encoding header")
 	flag.BoolVar(&randomize, "random", false, "Randomize URL order")
+	flag.BoolVar(&insecure, "insecure", false, "Skip verifing SSL certificate")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -243,6 +248,7 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.WriteTimeout = time.Duration(writeTimeout) * time.Millisecond
 	configuration.myClient.MaxConnsPerHost = clients
 	configuration.myClient.Name = userAgent
+        configuration.myClient.TLSConfig = &tls.Config{ InsecureSkipVerify: insecure }
 
 	configuration.myClient.Dial = MyDialer()
 
