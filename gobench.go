@@ -272,13 +272,13 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 				result.success++
 			}
 			result.elapse = append(result.elapse, time.Since(req_start).Seconds())
-			// b, err := ioutil.ReadAll(resp.Body)
-			// resp.Body.Close()
-			// if err != nil {
-			// 	fmt.Fprintf(os.Stderr, "fetch: reading %s: %v\n", url, err)
-			// 	os.Exit(1)
-			// }
-			// fmt.Printf("%s", b)
+			_, err = ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "fetch: reading %s: %v\n", url, err)
+				result.badFailed++
+			}
+			//fmt.Printf("%s", b)
 
 		}
 	}
