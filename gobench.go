@@ -3,6 +3,9 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
+	"net/http"
+	//	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -15,8 +18,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/valyala/fasthttp"
+	//	"github.com/valyala/fasthttp"
 )
 
 var (
@@ -41,7 +43,7 @@ type Configuration struct {
 	keepAlive  bool
 	authHeader string
 
-	myClient fasthttp.Client
+	//	myClient fasthttp.Client
 }
 
 type Result struct {
@@ -49,6 +51,7 @@ type Result struct {
 	success       int64
 	networkFailed int64
 	badFailed     int64
+	elapse        []float64
 }
 
 var readThroughput int64
@@ -97,11 +100,21 @@ func printResults(results map[int]*Result, startTime time.Time) {
 	var networkFailed int64
 	var badFailed int64
 
+	f, err := os.Create("delay.txt")
+	if err != nil {
+		fmt.Println("open file failed")
+		panic(err)
+	}
+	defer f.Close()
+
 	for _, result := range results {
 		requests += result.requests
 		success += result.success
 		networkFailed += result.networkFailed
 		badFailed += result.badFailed
+		for _, rtt := range result.elapse {
+			fmt.Fprintf(f, "%f\n", rtt)
+		}
 	}
 
 	elapsed := int64(time.Since(startTime).Seconds())
@@ -228,66 +241,45 @@ func NewConfiguration() *Configuration {
 		configuration.postData = data
 	}
 
-	configuration.myClient.ReadTimeout = time.Duration(readTimeout) * time.Millisecond
-	configuration.myClient.WriteTimeout = time.Duration(writeTimeout) * time.Millisecond
-	configuration.myClient.MaxConnsPerHost = clients
+	// configuration.myClient.ReadTimeout = time.Duration(readTimeout) * time.Millisecond
+	// configuration.myClient.WriteTimeout = time.Duration(writeTimeout) * time.Millisecond
+	// configuration.myClient.MaxConnsPerHost = clients
 
-	configuration.myClient.Dial = MyDialer()
+	// configuration.myClient.Dial = MyDialer()
 
 	return configuration
-}
-
-func MyDialer() func(address string) (conn net.Conn, err error) {
-	return func(address string) (net.Conn, error) {
-		conn, err := net.Dial("tcp", address)
-		if err != nil {
-			return nil, err
-		}
-
-		myConn := &MyConn{Conn: conn}
-
-		return myConn, nil
-	}
 }
 
 func client(configuration *Configuration, result *Result, done *sync.WaitGroup) {
 	for result.requests < configuration.requests {
 		for _, tmpUrl := range configuration.urls {
 
-			req := fasthttp.AcquireRequest()
+			req_start := time.Now()
 
-			req.SetRequestURI(tmpUrl)
-			req.Header.SetMethodBytes([]byte(configuration.method))
-
-			if configuration.keepAlive == true {
-				req.Header.Set("Connection", "keep-alive")
-			} else {
-				req.Header.Set("Connection", "close")
+			netClient := &http.Client{
+				Timeout: time.Second * 5,
 			}
-
-			if len(configuration.authHeader) > 0 {
-				req.Header.Set("Authorization", configuration.authHeader)
-			}
-
-			req.SetBody(configuration.postData)
-
-			resp := fasthttp.AcquireResponse()
-			err := configuration.myClient.Do(req, resp)
-			statusCode := resp.StatusCode()
+			resp, err := netClient.Get(tmpUrl)
 			result.requests++
-			fasthttp.ReleaseRequest(req)
-			fasthttp.ReleaseResponse(resp)
-
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
 				result.networkFailed++
 				continue
 			}
-
-			if statusCode == fasthttp.StatusOK {
-				result.success++
-			} else {
+			if resp.StatusCode != http.StatusOK {
 				result.badFailed++
+			} else {
+				result.success++
 			}
+			result.elapse = append(result.elapse, time.Since(req_start).Seconds())
+			// b, err := ioutil.ReadAll(resp.Body)
+			// resp.Body.Close()
+			// if err != nil {
+			// 	fmt.Fprintf(os.Stderr, "fetch: reading %s: %v\n", url, err)
+			// 	os.Exit(1)
+			// }
+			// fmt.Printf("%s", b)
+
 		}
 	}
 
@@ -300,11 +292,15 @@ func main() {
 	var done sync.WaitGroup
 	results := make(map[int]*Result)
 
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
 	signalChannel := make(chan os.Signal, 2)
 	signal.Notify(signalChannel, os.Interrupt)
 	go func() {
 		_ = <-signalChannel
+		fmt.Println("in coroutine print results")
 		printResults(results, startTime)
+		fmt.Println("in coroutine print results done")
 		os.Exit(0)
 	}()
 
