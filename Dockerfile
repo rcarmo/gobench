@@ -1,5 +1,5 @@
-FROM scratch
+FROM golang
 
-COPY gobench /
+COPY gobench.go /
 
 ENTRYPOINT ["/gobench"]
