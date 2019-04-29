@@ -277,17 +277,14 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			requestTimer := time.Now().UTC()
 			err := configuration.myClient.Do(req, resp)
 			statusCode := resp.StatusCode()
-			if(verbose) {
-				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer) )
+			if verbose {
+				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer))
 			}
 			result.requests++
 			fasthttp.ReleaseRequest(req)
 			fasthttp.ReleaseResponse(resp)
 
 			if err != nil {
-				if(verbose) {
-					fmt.Printf("Network Error :[%s]\n", err)
-				}
 				result.networkFailed++
 				continue
 			}
@@ -295,7 +292,7 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			if statusCode == fasthttp.StatusOK {
 				result.success++
 			} else {
-				if(verbose) {
+				if verbose {
 					fmt.Printf("Non-2xx Status Code returned: [%d]\n", statusCode)
 				}
 				result.badFailed++
