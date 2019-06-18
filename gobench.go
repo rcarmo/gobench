@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -15,8 +17,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"math/rand"
-	"crypto/tls"
 
 	"github.com/valyala/fasthttp"
 )
@@ -36,7 +36,7 @@ var (
 	userAgent        string
 	acceptEnc        string
 	randomize        bool
-	insecure	 bool
+	insecure         bool
 	verbose          bool
 )
 
@@ -250,7 +250,7 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.WriteTimeout = time.Duration(writeTimeout) * time.Millisecond
 	configuration.myClient.MaxConnsPerHost = clients
 	configuration.myClient.Name = userAgent
-        configuration.myClient.TLSConfig = &tls.Config{ InsecureSkipVerify: insecure }
+	configuration.myClient.TLSConfig = &tls.Config{InsecureSkipVerify: insecure}
 
 	configuration.myClient.Dial = MyDialer()
 
@@ -273,8 +273,8 @@ func MyDialer() func(address string) (conn net.Conn, err error) {
 func client(configuration *Configuration, result *Result, done *sync.WaitGroup) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for result.requests < configuration.requests {
-		var tmpUrls []string;
-		if (configuration.randomize) {
+		var tmpUrls []string
+		if configuration.randomize {
 			tmpUrls = []string{configuration.urls[rand.Intn(len(configuration.urls))]}
 		} else {
 			tmpUrls = configuration.urls
