@@ -55,7 +55,7 @@ type Configuration struct {
 	randomize  bool
 	contentType string
 
-	myClient fasthttp.Client
+	//	myClient fasthttp.Client
 }
 
 type Result struct {
@@ -63,6 +63,7 @@ type Result struct {
 	success       int64
 	networkFailed int64
 	badFailed     int64
+	elapse        []float64
 }
 
 var readThroughput int64
@@ -118,11 +119,21 @@ func printResults(results map[int]*Result, startTime time.Time) {
 	var networkFailed int64
 	var badFailed int64
 
+	f, err := os.Create("delay.txt")
+	if err != nil {
+		fmt.Println("open file failed")
+		panic(err)
+	}
+	defer f.Close()
+
 	for _, result := range results {
 		requests += result.requests
 		success += result.success
 		networkFailed += result.networkFailed
 		badFailed += result.badFailed
+		for _, rtt := range result.elapse {
+			fmt.Fprintf(f, "%f\n", rtt)
+		}
 	}
 
 	elapsed := int64(time.Since(startTime).Seconds())
@@ -271,22 +282,9 @@ func NewConfiguration() *Configuration {
 		configuration.myClient.TLSConfig = &config
 	}
 
-	configuration.myClient.Dial = MyDialer()
+	// configuration.myClient.Dial = MyDialer()
 
 	return configuration
-}
-
-func MyDialer() func(address string) (conn net.Conn, err error) {
-	return func(address string) (net.Conn, error) {
-		conn, err := net.Dial("tcp", address)
-		if err != nil {
-			return nil, err
-		}
-
-		myConn := &MyConn{Conn: conn}
-
-		return myConn, nil
-	}
 }
 
 func client(configuration *Configuration, result *Result, done *sync.WaitGroup) {
@@ -300,19 +298,10 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 		}
 		for _, tmpUrl := range tmpUrls {
 
-			req := fasthttp.AcquireRequest()
+			req_start := time.Now()
 
-			req.SetRequestURI(tmpUrl)
-			req.Header.SetMethodBytes([]byte(configuration.method))
-
-			if configuration.keepAlive == true {
-				req.Header.Set("Connection", "keep-alive")
-			} else {
-				req.Header.Set("Connection", "close")
-			}
-
-			if len(configuration.authHeader) > 0 {
-				req.Header.Set("Authorization", configuration.authHeader)
+			netClient := &http.Client{
+				Timeout: time.Second * 5,
 			}
 
 			if len(configuration.acceptEnc) > 0 {
@@ -333,21 +322,24 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer))
 			}
 			result.requests++
-			fasthttp.ReleaseRequest(req)
-			fasthttp.ReleaseResponse(resp)
-
 			if err != nil {
 				fmt.Printf("Network error: %s\n", err)
 				result.networkFailed++
 				continue
 			}
-
-			if statusCode == fasthttp.StatusOK {
-				result.success++
+			if resp.StatusCode != http.StatusOK {
+				result.badFailed++
 			} else {
 				if verbose {
 					fmt.Printf("Non-2xx Status Code returned: [%d]\n", statusCode)
 				}
+				result.success++
+			}
+			result.elapse = append(result.elapse, time.Since(req_start).Seconds())
+			_, err = ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				fmt.Printf(os.Stderr, "fetch: reading %s: %v\n", url, err)
 				result.badFailed++
 			}
 		}
@@ -368,7 +360,9 @@ func main() {
 	signal.Notify(signalChannel, os.Interrupt)
 	go func() {
 		_ = <-signalChannel
+		fmt.Println("in coroutine print results")
 		printResults(results, startTime)
+		fmt.Println("in coroutine print results done")
 		os.Exit(0)
 	}()
 
