@@ -11,14 +11,19 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"crypto/tls"
+
+	"github.com/pborman/uuid"
 	"github.com/valyala/fasthttp"
 )
 
@@ -40,22 +45,24 @@ var (
 	insecure         bool
 	verbose          bool
 	contentType      string
+	uriSubstitution  bool
 )
 
 // Benchmark Client Configuration
 type Configuration struct {
-	urls       []string
-	method     string
-	postData   []byte
-	requests   int64
-	period     int64
-	keepAlive  bool
-	authHeader string
-	acceptEnc  string
-	randomize  bool
-	contentType string
+	urls            []string
+	method          string
+	postData        []byte
+	requests        int64
+	period          int64
+	keepAlive       bool
+	authHeader      string
+	acceptEnc       string
+	randomize       bool
+	contentType     string
+	uriSubstitution bool
 
-	//	myClient fasthttp.Client
+	myClient fasthttp.Client
 }
 
 type Result struct {
@@ -111,6 +118,7 @@ func init() {
 	flag.BoolVar(&insecure, "insecure", false, "Skip verifing SSL certificate")
 	flag.BoolVar(&verbose, "v", false, "Show debug messages")
 	flag.StringVar(&contentType, "ct", "", "Content type")
+	flag.BoolVar(&uriSubstitution, "s", false, "Support <UUID> & <CID> substition in uri")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -203,15 +211,16 @@ func NewConfiguration() *Configuration {
 	}
 
 	configuration := &Configuration{
-		urls:       make([]string, 0),
-		method:     "GET",
-		postData:   nil,
-		keepAlive:  keepAlive,
-		requests:   int64((1 << 63) - 1),
-		authHeader: authHeader,
-		acceptEnc:  acceptEnc,
-		randomize:  randomize
-		contentType: contentType}
+		urls:            make([]string, 0),
+		method:          "GET",
+		postData:        nil,
+		keepAlive:       keepAlive,
+		requests:        int64((1 << 63) - 1),
+		authHeader:      authHeader,
+		acceptEnc:       acceptEnc,
+		randomize:       randomize,
+		uriSubstitution: uriSubstitution,
+		contentType:     contentType}
 
 	if period != -1 {
 		configuration.period = period
@@ -275,10 +284,9 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.Name = userAgent
 	configuration.myClient.TLSConfig = &tls.Config{InsecureSkipVerify: insecure}
 
-	
 	// if flag set, then allow skip of cert check
-	if(insecureSkipVerify) {
-        	config := tls.Config{InsecureSkipVerify: true} 
+	if insecureSkipVerify {
+		config := tls.Config{InsecureSkipVerify: true}
 		configuration.myClient.TLSConfig = &config
 	}
 
@@ -287,8 +295,27 @@ func NewConfiguration() *Configuration {
 	return configuration
 }
 
-func client(configuration *Configuration, result *Result, done *sync.WaitGroup) {
+func MyDialer() func(address string) (conn net.Conn, err error) {
+	return func(address string) (net.Conn, error) {
+		conn, err := net.Dial("tcp", address)
+		if err != nil {
+			return nil, err
+		}
+
+		myConn := &MyConn{Conn: conn}
+
+		return myConn, nil
+	}
+}
+
+func uriReplacer(s string, id string) string {
+	r := strings.NewReplacer("<UUID>", uuid.New(), "<CID>", id)
+	return r.Replace(s)
+}
+
+func client(configuration *Configuration, result *Result, id string, done *sync.WaitGroup) {
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	for result.requests < configuration.requests {
 		var tmpUrls []string
 		if configuration.randomize {
@@ -299,6 +326,12 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 		for _, tmpUrl := range tmpUrls {
 
 			req_start := time.Now()
+			if configuration.uriSubstitution {
+				req.SetRequestURI(uriReplacer(tmpUrl, id))
+			} else {
+				req.SetRequestURI(tmpUrl)
+			}
+			req.Header.SetMethodBytes([]byte(configuration.method))
 
 			netClient := &http.Client{
 				Timeout: time.Second * 5,
@@ -316,7 +349,9 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			resp := fasthttp.AcquireResponse()
 			requestTimer := time.Now().UTC()
 			err := configuration.myClient.Do(req, resp)
-			if(err!=nil) { fmt.Printf("%s\n",err) }
+			if err != nil {
+				fmt.Printf("%s\n", err)
+			}
 			statusCode := resp.StatusCode()
 			if verbose {
 				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer))
@@ -382,7 +417,7 @@ func main() {
 	for i := 0; i < clients; i++ {
 		result := &Result{}
 		results[i] = result
-		go client(configuration, result, &done)
+		go client(configuration, result, strconv.Itoa(i), &done)
 
 	}
 	fmt.Println("Waiting for results...")
@@ -391,4 +426,3 @@ func main() {
 	fmt.Println("wait is done")
 	printResults(results, startTime)
 }
-
