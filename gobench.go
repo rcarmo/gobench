@@ -232,7 +232,7 @@ func NewConfiguration() *Configuration {
 		fileLines, err := readLines(urlsFilePath)
 
 		if err != nil {
-			log.Fatalf("Error in ioutil.ReadFile for file: %s Error: ", urlsFilePath, err)
+			log.Fatalf("Error in ioutil.ReadFile for file: %s Error: %s", urlsFilePath, err)
 		}
 
 		configuration.urls = fileLines
@@ -248,7 +248,7 @@ func NewConfiguration() *Configuration {
 		data, err := ioutil.ReadFile(postDataFilePath)
 
 		if err != nil {
-			log.Fatalf("Error in ioutil.ReadFile for file path: %s Error: ", postDataFilePath, err)
+			log.Fatalf("Error in ioutil.ReadFile for file path: %s Error:%s", postDataFilePath, err)
 		}
 
 		configuration.postData = data
