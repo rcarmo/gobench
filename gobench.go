@@ -18,7 +18,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/valyala/fasthttp"
+	"crypto/tls"
+	"github.com/Dark-Vex/fasthttp"
 )
 
 // Global variables
@@ -97,6 +98,7 @@ func init() {
 	flag.StringVar(&url, "u", "", "URL")
 	flag.StringVar(&urlsFilePath, "f", "", "URL's file path (line seperated)")
 	flag.BoolVar(&keepAlive, "k", true, "Do HTTP keep-alive")
+	flag.BoolVar(&insecureSkipVerify, "s", false, "Skip cert check")
 	flag.StringVar(&postDataFilePath, "d", "", "HTTP POST data file path")
 	flag.Int64Var(&period, "t", -1, "Period of time (in seconds)")
 	flag.IntVar(&writeTimeout, "tw", 5000, "Write timeout (in milliseconds)")
@@ -215,6 +217,7 @@ func NewConfiguration() *Configuration {
 			err := proc.Signal(os.Interrupt)
 			if err != nil {
 				log.Println(err)
+				fmt.Println(err)
 				return
 			}
 		}()
@@ -255,6 +258,13 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.MaxConnsPerHost = clients
 	configuration.myClient.Name = userAgent
 	configuration.myClient.TLSConfig = &tls.Config{InsecureSkipVerify: insecure}
+
+	
+	// if flag set, then allow skip of cert check
+	if(insecureSkipVerify) {
+        	config := tls.Config{InsecureSkipVerify: true} 
+		configuration.myClient.TLSConfig = &config
+	}
 
 	configuration.myClient.Dial = MyDialer()
 
@@ -312,6 +322,7 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			resp := fasthttp.AcquireResponse()
 			requestTimer := time.Now().UTC()
 			err := configuration.myClient.Do(req, resp)
+			if(err!=nil) { fmt.Printf("%s\n",err) }
 			statusCode := resp.StatusCode()
 			if verbose {
 				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer))

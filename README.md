@@ -66,11 +66,11 @@ Usage
 2. download gobench
     
     ```
-    GOPATH=/tmp/ go get github.com/valyala/fasthttp
-    GOPATH=/tmp/ go get github.com/cmpxchg16/gobench
+    GOPATH=/tmp/ go get github.com/Dark-Vex/fasthttp
+    GOPATH=/tmp/ go get github.com/Dark-Vex/gobench
     ```
 
-3. run some http server on port 80
+3. run some http server on port 80 or port 443
 
 4. run gobench for HTTP GET
 
@@ -79,6 +79,10 @@ Usage
 5. run gobench for HTTP POST
 
     ```$>gobench -u http://localhost:80 -k=true -c 500 -t 10 -d /tmp/post```
+    
+6. run gobench for HTTPS GET (-s true will skip the certificate verification)
+
+    ```$>gobench -u http://localhost:80 -k=true -c 500 -t 10 -s true```
 
 
 Notes
