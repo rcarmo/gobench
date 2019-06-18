@@ -15,10 +15,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"math/rand"
+	"crypto/tls"
 
 	"github.com/valyala/fasthttp"
 )
 
+// Global variables
 var (
 	requests         int64
 	period           int64
@@ -30,8 +33,13 @@ var (
 	writeTimeout     int
 	readTimeout      int
 	authHeader       string
+	userAgent        string
+	acceptEnc        string
+	randomize        bool
+	insecure	 bool
 )
 
+// Benchmark Client Configuration
 type Configuration struct {
 	urls       []string
 	method     string
@@ -40,6 +48,8 @@ type Configuration struct {
 	period     int64
 	keepAlive  bool
 	authHeader string
+	acceptEnc  string
+	randomize  bool
 
 	myClient fasthttp.Client
 }
@@ -89,6 +99,10 @@ func init() {
 	flag.IntVar(&writeTimeout, "tw", 5000, "Write timeout (in milliseconds)")
 	flag.IntVar(&readTimeout, "tr", 5000, "Read timeout (in milliseconds)")
 	flag.StringVar(&authHeader, "auth", "", "Authorization header")
+	flag.StringVar(&userAgent, "agent", "", "User-Agent header")
+	flag.StringVar(&acceptEnc, "accept", "", "Accept-Encoding header")
+	flag.BoolVar(&randomize, "random", false, "Randomize URL order")
+	flag.BoolVar(&insecure, "insecure", false, "Skip verifing SSL certificate")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -175,7 +189,9 @@ func NewConfiguration() *Configuration {
 		postData:   nil,
 		keepAlive:  keepAlive,
 		requests:   int64((1 << 63) - 1),
-		authHeader: authHeader}
+		authHeader: authHeader,
+		acceptEnc:  acceptEnc,
+		randomize:  randomize}
 
 	if period != -1 {
 		configuration.period = period
@@ -231,6 +247,8 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.ReadTimeout = time.Duration(readTimeout) * time.Millisecond
 	configuration.myClient.WriteTimeout = time.Duration(writeTimeout) * time.Millisecond
 	configuration.myClient.MaxConnsPerHost = clients
+	configuration.myClient.Name = userAgent
+        configuration.myClient.TLSConfig = &tls.Config{ InsecureSkipVerify: insecure }
 
 	configuration.myClient.Dial = MyDialer()
 
@@ -251,8 +269,15 @@ func MyDialer() func(address string) (conn net.Conn, err error) {
 }
 
 func client(configuration *Configuration, result *Result, done *sync.WaitGroup) {
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for result.requests < configuration.requests {
-		for _, tmpUrl := range configuration.urls {
+		var tmpUrls []string;
+		if (configuration.randomize) {
+			tmpUrls = []string{configuration.urls[rand.Intn(len(configuration.urls))]}
+		} else {
+			tmpUrls = configuration.urls
+		}
+		for _, tmpUrl := range tmpUrls {
 
 			req := fasthttp.AcquireRequest()
 
@@ -267,6 +292,10 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 
 			if len(configuration.authHeader) > 0 {
 				req.Header.Set("Authorization", configuration.authHeader)
+			}
+
+			if len(configuration.acceptEnc) > 0 {
+				req.Header.Set("Accept-Encoding", configuration.acceptEnc)
 			}
 
 			req.SetBody(configuration.postData)
