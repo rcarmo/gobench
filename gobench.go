@@ -37,6 +37,7 @@ var (
 	acceptEnc        string
 	randomize        bool
 	insecure	 bool
+	verbose          bool
 )
 
 // Benchmark Client Configuration
@@ -103,6 +104,7 @@ func init() {
 	flag.StringVar(&acceptEnc, "accept", "", "Accept-Encoding header")
 	flag.BoolVar(&randomize, "random", false, "Randomize URL order")
 	flag.BoolVar(&insecure, "insecure", false, "Skip verifing SSL certificate")
+	flag.BoolVar(&verbose, "v", false, "Show debug messages")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -301,8 +303,12 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			req.SetBody(configuration.postData)
 
 			resp := fasthttp.AcquireResponse()
+			requestTimer := time.Now().UTC()
 			err := configuration.myClient.Do(req, resp)
 			statusCode := resp.StatusCode()
+			if verbose {
+				fmt.Printf("Got status code [%d] - Request took [%s]\n", statusCode, time.Since(requestTimer))
+			}
 			result.requests++
 			fasthttp.ReleaseRequest(req)
 			fasthttp.ReleaseResponse(resp)
@@ -315,6 +321,9 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			if statusCode == fasthttp.StatusOK {
 				result.success++
 			} else {
+				if verbose {
+					fmt.Printf("Non-2xx Status Code returned: [%d]\n", statusCode)
+				}
 				result.badFailed++
 			}
 		}
