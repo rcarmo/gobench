@@ -74,6 +74,7 @@ type Result struct {
 var readThroughput int64
 var writeThroughput int64
 
+// connection
 type MyConn struct {
 	net.Conn
 }
@@ -355,7 +356,7 @@ func client(configuration *Configuration, result *Result, id string, done *sync.
 				result.networkFailed++
 				continue
 			}
-			if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode() != http.StatusOK {
 				result.badFailed++
 			} else {
 				if verbose {
