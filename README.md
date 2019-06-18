@@ -1,5 +1,5 @@
-Introduction
-================
+Introduction (from vitkhab/gobench)
+===================================
 
 I wrote that code because: (the obvious reason::I love to write code in Go)
 
