@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"crypto/tls"
-	"github.com/Dark-Vex/fasthttp"
+	"github.com/valyala/fasthttp"
 )
 
 // Global variables
@@ -140,6 +140,7 @@ func printResults(results map[int]*Result, startTime time.Time) {
 	fmt.Printf("Read throughput:                %10d bytes/sec\n", readThroughput/elapsed)
 	fmt.Printf("Write throughput:               %10d bytes/sec\n", writeThroughput/elapsed)
 	fmt.Printf("Test time:                      %10d sec\n", elapsed)
+	fmt.Printf("Average request latency:              %4.2f msec\n", float64(elapsed)/float64(success)*1000)
 }
 
 func readLines(path string) (lines []string, err error) {
@@ -332,6 +333,7 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 			fasthttp.ReleaseResponse(resp)
 
 			if err != nil {
+				fmt.Printf("Network error: %s\n", err)
 				result.networkFailed++
 				continue
 			}
