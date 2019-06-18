@@ -21,8 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"crypto/tls"
-
 	"github.com/pborman/uuid"
 	"github.com/valyala/fasthttp"
 )
@@ -106,7 +104,6 @@ func init() {
 	flag.StringVar(&url, "u", "", "URL")
 	flag.StringVar(&urlsFilePath, "f", "", "URL's file path (line seperated)")
 	flag.BoolVar(&keepAlive, "k", true, "Do HTTP keep-alive")
-	flag.BoolVar(&insecureSkipVerify, "s", false, "Skip cert check")
 	flag.StringVar(&postDataFilePath, "d", "", "HTTP POST data file path")
 	flag.Int64Var(&period, "t", -1, "Period of time (in seconds)")
 	flag.IntVar(&writeTimeout, "tw", 5000, "Write timeout (in milliseconds)")
@@ -284,12 +281,6 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.Name = userAgent
 	configuration.myClient.TLSConfig = &tls.Config{InsecureSkipVerify: insecure}
 
-	// if flag set, then allow skip of cert check
-	if insecureSkipVerify {
-		config := tls.Config{InsecureSkipVerify: true}
-		configuration.myClient.TLSConfig = &config
-	}
-
 	// configuration.myClient.Dial = MyDialer()
 
 	return configuration
@@ -324,6 +315,8 @@ func client(configuration *Configuration, result *Result, id string, done *sync.
 			tmpUrls = configuration.urls
 		}
 		for _, tmpUrl := range tmpUrls {
+
+			req := fasthttp.AcquireRequest()
 
 			req_start := time.Now()
 			if configuration.uriSubstitution {
