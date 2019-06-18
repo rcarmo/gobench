@@ -38,6 +38,7 @@ var (
 	randomize        bool
 	insecure         bool
 	verbose          bool
+	contentType      string
 )
 
 // Benchmark Client Configuration
@@ -51,6 +52,7 @@ type Configuration struct {
 	authHeader string
 	acceptEnc  string
 	randomize  bool
+	contentType string
 
 	myClient fasthttp.Client
 }
@@ -105,6 +107,7 @@ func init() {
 	flag.BoolVar(&randomize, "random", false, "Randomize URL order")
 	flag.BoolVar(&insecure, "insecure", false, "Skip verifing SSL certificate")
 	flag.BoolVar(&verbose, "v", false, "Show debug messages")
+	flag.StringVar(&contentType, "ct", "", "Content type")
 }
 
 func printResults(results map[int]*Result, startTime time.Time) {
@@ -193,7 +196,8 @@ func NewConfiguration() *Configuration {
 		requests:   int64((1 << 63) - 1),
 		authHeader: authHeader,
 		acceptEnc:  acceptEnc,
-		randomize:  randomize}
+		randomize:  randomize
+		contentType: contentType}
 
 	if period != -1 {
 		configuration.period = period
@@ -300,6 +304,9 @@ func client(configuration *Configuration, result *Result, done *sync.WaitGroup) 
 				req.Header.Set("Accept-Encoding", configuration.acceptEnc)
 			}
 
+			if len(configuration.contentType) > 0 {
+				req.Header.Set("Content-Type", configuration.contentType)
+			}
 			req.SetBody(configuration.postData)
 
 			resp := fasthttp.AcquireResponse()
