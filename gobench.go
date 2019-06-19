@@ -11,7 +11,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -282,7 +281,7 @@ func NewConfiguration() *Configuration {
 	configuration.myClient.Name = userAgent
 	configuration.myClient.TLSConfig = &tls.Config{InsecureSkipVerify: insecure}
 
-	// configuration.myClient.Dial = MyDialer()
+	configuration.myClient.Dial = MyDialer()
 
 	return configuration
 }
@@ -327,10 +326,6 @@ func client(configuration *Configuration, result *Result, id string, done *sync.
 			}
 			req.Header.SetMethodBytes([]byte(configuration.method))
 
-			netClient := &http.Client{
-				Timeout: time.Second * 5,
-			}
-
 			if len(configuration.acceptEnc) > 0 {
 				req.Header.Set("Accept-Encoding", configuration.acceptEnc)
 			}
@@ -356,7 +351,7 @@ func client(configuration *Configuration, result *Result, id string, done *sync.
 				result.networkFailed++
 				continue
 			}
-			if resp.StatusCode() != http.StatusOK {
+			if resp.StatusCode() != fasthttp.StatusOK {
 				result.badFailed++
 			} else {
 				if verbose {
@@ -365,12 +360,6 @@ func client(configuration *Configuration, result *Result, id string, done *sync.
 				result.success++
 			}
 			result.elapse = append(result.elapse, time.Since(req_start).Seconds())
-			_, err = ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				fmt.Printf(os.Stderr, "fetch: reading %s: %v\n", url, err)
-				result.badFailed++
-			}
 		}
 	}
 

@@ -12,8 +12,8 @@ I was tired of having to explain that `ab` is completely outdated for HTTP bench
 * [ ] Linux/Windows/Mac release builds
 * [ ] Travis builds
 * [ ] CREDITS (after tallying merged repos)
-* [ ] go-lint
-* [ ] Stable merge
+* [ ] go-lint\:w
+* [x] <strike>Stable</strike> initial merge
 * [x] new README, LICENSE
 * [x] Initial round-up of all existing forks with interesting changes
 
