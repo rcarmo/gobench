@@ -11,7 +11,7 @@ I was tired of having to explain that `ab` is completely outdated for HTTP bench
 * [ ] Trimmed Docker container
 * [ ] Linux/Windows/Mac release builds
 * [ ] Travis builds
-* [ ] CREDITS (after tallying merged repos)
+* [x] CREDITS (after tallying merged repos)
 * [ ] go-lint\:w
 * [x] <strike>Stable</strike> initial merge
 * [x] new README, LICENSE
@@ -23,5 +23,29 @@ I was tired of having to explain that `ab` is completely outdated for HTTP bench
 make deps
 make
 ```
+
+## Credits
+
+* cmpxchg16
+* rcarmo
+* jonoden
+* vitkhab
+* bnair
+* Dark-Vex
+* jeroenvermeulen
+* jack1582
+* ian-kent
+* hodduc
+* koAlech
+* justifiably
+* jlawrienyt
+* garry415
+* fabianlee
+* durple
+* vbryant1410
+* brianchung808
+* DavidAspinall
+
+
 
 [original]: https://github.com/cmpxchg16/gobench
